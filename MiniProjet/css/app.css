@@ -1,0 +1,10 @@
+#app{
+  width: 600px;
+  height:400px;
+  border-radius: 5px;
+  border: 1px solid #CCC;
+  cursor: crosshair;
+}
+button{
+  cursor: pointer;
+}
