@@ -8,3 +8,27 @@
 button{
   cursor: pointer;
 }
+table{
+  display: none;
+}
+table,
+td {
+  border: 1px solid #333;
+  text-align: center;
+  padding: 5px;
+}
+tr{
+  padding: 5px;
+  text-align: center;
+}
+th{
+  padding: 5px;
+  text-align: center;
+}
+
+thead,
+tfoot {
+  text-align: center;
+  background-color: #333;
+  color: #fff;
+}

@@ -41,12 +41,31 @@ canvas.mousemove(function (event){
   }
 });
 
+canvas.dblclick(function(event){
+  var posX = event.clientX - canvas[0].getBoundingClientRect().left;
+  var posY = event.clientY - canvas[0].getBoundingClientRect().top;
+
+  var checkExist = checkIfPointExist(posX, posY);
+
+  if(checkExist){
+    var pId = getPointByCoord(posX, posY);
+    var p = listPoints.find(item => item.id === pId);
+    var name;
+    do {
+        name=prompt("Enter label");
+    }
+    while(name.length > 20); // Taille max
+    p.name = name;
+    repaint();
+  }
+
+});
+
 $('html').keyup(function(e){
     if(e.which == 46) {
       listPoints.filter(function(o) { return o.selected == true }).forEach(function(element){
         listPoints.splice(element.id - 1,1);
         repaint();
-        console.log(listPoints);
       });
     }
 });
@@ -97,11 +116,14 @@ canvas.on('mouseup', function(event){
           });
 
 
-          var p = listPoints.find(item => item.id === pFrom);
-          if(p){
-            p.linkedTo.push(pTo);
-          }
-          // TODO : ON EST ICI, il manque plus qu'à tracer les fléches mtn
+          pFrom = listPoints.find(item => item.id === pFrom);
+          pTo = listPoints.find(item => item.id === pTo);
+          var deleteP = false;
+          pFrom.linkedTo = $.grep(pFrom.linkedTo, function(p){
+            if(p == pTo.id)  deleteP = true;
+            return p != pTo.id;
+          });
+          if(!deleteP) pFrom.linkedTo.push(pTo.id);
         }
         repaint();
         /*if(typeof(listPoints.find(item => item.id === pTo)) != "undefined"){
@@ -126,9 +148,10 @@ function checkIfPointExist(posX, posY){
 }
 
 
-function createDot(posX, posY, selected=false){
+function createDot(posX, posY, name=null, selected=false){
   dot = {
     "id": listPoints.length + 1,
+    "name": name,
     "x": posX,
     "y": posY,
     "selected": selected,
@@ -150,8 +173,14 @@ function createDot(posX, posY, selected=false){
   context.beginPath();
   context.arc(posX, posY, 2*(configDot.radius), 0,  2*Math.PI);
   context.fill();
-  context.fillStyle = "#FFF";
-  context.fillText(dot.id, dot.x, dot.y);
+  if(dot.name == null){
+    context.fillStyle = "#FFF";
+    context.fillText(dot.id, dot.x, dot.y);
+  }else{
+    context.fillStyle = "#000";
+    context.fillText(dot.name, dot.x, dot.y);
+  }
+
   context.stroke();
 }
 
@@ -159,7 +188,7 @@ function createArrow(p1, p2){
   var angleRad = getAngle(p1.x, p1.y, p2.x, p2.y);
   var cos = 13 * Math.cos(angleRad);
   var sin = 13 * Math.sin(angleRad);
-    
+
   context.fillStyle = "#000";
   context.strokeStyle = "#000";
   context.lineWidth = 1;
@@ -171,7 +200,7 @@ function createArrow(p1, p2){
   context.stroke();
 
   // A partir de là, la ligne entre 2 pts est tracée
-  
+
   if(config.oriented === true){
     context.beginPath();
     context.moveTo(p2.x - cos, p2.y - sin); //se mettre au bout de la flèche
@@ -214,20 +243,10 @@ function createArrow(p1, p2){
       }
     }
   }
-  /*var linkList = listPoints.find(item => item.id === p1.id).linkedTo;
-  var i = 0;
-  while(i<linkList.length){
-    if(linkList[i] !== p2.id){
-      i++;
-    }else{
-      break;
-    }
-  }*/
   var linkList = listPoints.find(item => item.id === p1.id).linkedTo;
   linkList.push(p2.id);
-  
-  
-  //console.log(listPoints);
+
+
 }
 
 function getAngle(x1, y1, x2, y2){
@@ -240,7 +259,7 @@ function repaint(){
   var points = listPoints;
   listPoints = [];
   points.forEach(function(dot){
-    createDot(dot.x, dot.y, dot.selected);
+    createDot(dot.x, dot.y, dot.name, dot.selected);
   })
   points.forEach(function(dot){
     if(dot.linkedTo.length != 0){
@@ -262,6 +281,143 @@ function getPointByCoord(x, y){
   return p;
 }
 
+function exportGraph(){
+  var name = prompt("Graph's name");
+  var objectToExport= {
+    "graph": {
+      "name": name,
+      "directed": config.oriented,
+      "vertices" : [],
+      "edges": []
+    }
+  }
+
+  listPoints.forEach(function(p){
+    var vertice = {
+      "id": p.id,
+      "label": p.name,
+      "pos": {
+        "x": p.x,
+        "y": p.y
+      }
+    }
+    objectToExport.graph.vertices.push(vertice);
+    p.linkedTo.forEach(function(link){
+      var edge = {
+        "id1" : p.id,
+        "id2": link
+      }
+      objectToExport.graph.edges.push(edge);
+    });
+  });
+
+  var blob = new Blob([JSON.stringify(objectToExport)], {type: "text/plain;charset=utf-8"});
+  saveAs(blob, name + ".json");
+}
+
+function importGraph(obj){
+  if(!('graph' in obj) || !('directed' in obj.graph) || !('vertices' in obj.graph) || !('edges' in obj.graph)){
+    alert('Error with JSON file');
+    return false;
+  }
+
+
+  graph = obj.graph;
+  config.oriented = graph.directed;
+
+  if(config.oriented) $('#selectOriented').trigger('click'); else $('#selectNotOriented').trigger('click');
+
+  listPoints = [];
+
+  var cpt = 1;
+  graph.vertices.forEach(function(vertice){
+    var p = {
+      "id": cpt++,
+      "name": vertice.label,
+      "x": vertice.pos.x,
+      "y": vertice.pos.y,
+      "selected": false,
+      "linkedTo": []
+    }
+
+    graph.edges.forEach(function(edge){
+      if(edge.id1 == p.id){
+        p.linkedTo.push(edge.id2);
+      }
+    });
+
+    listPoints.push(p);
+  });
+  repaint();
+}
+
+function calculatePR(prevIt = null, currentIt = null){
+  if(prevIt && currentIt){
+    // TODO : Recursif
+    var numerator = 0;
+    var normeP = 0;
+    var normeC = 0;
+    var rank = [];
+    for (i = 0; i < currentIt.length; i++) {
+      numerator += currentIt[i].value*prevIt[i].value;
+      normeC += currentIt[i].value;
+      normeP += prevIt[i].value;
+      rank.push(currentIt[i].value);
+    }
+    var ps = numerator / (Math.sqrt(normeC) + Math.sqrt(normeP));
+    if(ps >= 0.99999){
+      // TODO : Classement page Rank + valeur
+
+      printTab(currentIt, rank);
+
+      
+      return false;
+    }else{
+      var prevIt = currentIt;
+      currentIt.forEach(function(p){
+        var links = listPoints.find(item => item.id === p.id).linkedTo;
+        links.forEach(function(link){
+          if(links.length != 0) currentIt.find(item => item.id === link).value += p.value/links.length;
+        });
+      });
+      calculatePR(prevIt, currentIt);
+    }
+  }else{
+    // iteration 0
+    var currentIt = [];
+    var prevIt = [];
+    listPoints.forEach(function(p){
+      currentIt.push({
+        "id": p.id,
+        "value": 1/listPoints.length
+      });
+    });
+
+    // iteration 1
+    var prevIt = currentIt;
+    currentIt.forEach(function(p){
+      var links = listPoints.find(item => item.id === p.id).linkedTo;
+      links.forEach(function(link){
+        if(links.length != 0) currentIt.find(item => item.id === link).value += p.value/links.length;
+      });
+    });
+    calculatePR(prevIt, currentIt);
+  }
+}
+
+function printTab(currentIt, rank){
+  console.log(currentIt, rank);
+  var orderedRank = rank.sort(function(a,b){return (b-a)});
+  var rows;
+  for(i = 0; i < currentIt.length; i++){
+    var verticeRank = orderedRank.indexOf(orderedRank.find(item => item === currentIt[i].value))+1;
+    rows += "\n<tr>\n<td>" + currentIt[i].id + "</td>\n<td>" + currentIt[i].value + "</td>\n<td>" + verticeRank + "</td>\n</tr>";
+  }
+
+  $('#tab').html("\n<thead>\n<tr>\n<th colspan='3'>PageRank Algorithm</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td><b>Vertice</b></td>\n<td><b>PageRank value</b></td>\n<td><b>Rank</b></td>\n</tr>"+ rows +"\n</tbody>");
+  $('#tab').css("display", "inline-block");
+}
+
 $('#selectOriented').click(function(){
   $(this).addClass('btn-success');
   $(this).removeClass('btn-default');
@@ -280,4 +436,23 @@ $('#selectNotOriented').click(function(){
 
   config.oriented = false;
   repaint();
+});
+
+$('#exportGraph').click(function(){
+  exportGraph();
+});
+
+$('#importGraph').change(function(){
+  var reader  = new FileReader();
+  reader.onload = function (event){
+      var obj = null;
+      try {
+        var obj = JSON.parse(event.target.result);
+      }catch (e) {
+        alert('Error during JSON parsing');
+      }
+
+      if(obj) importGraph(obj);
+  };
+  var file = reader.readAsText(this.files[0]);
 });

@@ -41,11 +41,24 @@
       </div>
       <hr>
       <canvas id="app" width="600" height="400"></canvas>
+      
+      <table id="tab">
+        
+      </table>
       <hr>
       <div class="btn-group">
-       <button type="button" class="btn btn-default">Importer</button>
-       <button type="button" class="btn btn-default">Exporter</button>
-       <button type="button" class="btn btn-default" onclick="window.location.reload()">Tout Effacer</button>
+       <input type="file" id="importGraph" class="btn btn-default form-control-file">
+       <button type="button" style="padding-bottom:10px" id="exportGraph" class="btn btn-default" value="Importer">Exporter</button>
+       <button type="button" style="padding-bottom:10px" class="btn btn-default" onclick="window.location.reload()">Tout Effacer</button>
+       <div class="btn-group" role="group">
+        <button type="button" style="padding-bottom:10px" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+          Algorithme
+          <span class="caret"></span>
+        </button>
+        <ul class="dropdown-menu">
+          <li><a href="#app" onclick="calculatePR()">PageRank</a></li>
+          <li><a href="#app" onclick="javascript:alert('Merci passer à la version premium')">Comming soon</a></li>
+        </ul>
       </div>
       <hr>
       <div class="reviews">
@@ -61,5 +74,6 @@
   </body>
   <script src="./js/jquery.js"></script>
   <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+  <script src="./js/fileSaver.js"></script>
   <script src="./js/app.js"></script>
 </html>
